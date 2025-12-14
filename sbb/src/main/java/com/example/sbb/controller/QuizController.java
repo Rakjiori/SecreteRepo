@@ -144,7 +144,6 @@ public class QuizController {
         }
 
         if (q == null || !q.getUser().getId().equals(user.getId())) {
-            rttr.addFlashAttribute("message", "문제를 찾을 수 없습니다.");
             String suffix = buildFolderSuffix(folder);
             return "redirect:/quiz/list" + suffix;
         }

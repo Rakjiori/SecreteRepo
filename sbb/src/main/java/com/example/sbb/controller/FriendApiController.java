@@ -10,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -61,13 +62,21 @@ public class FriendApiController {
                         "questionText", r.getQuestion().getQuestionText(),
                         "createdAt", r.getCreatedAt()
                 )).toList(),
-                "shareAccepted", shareAccepted.stream().map(r -> Map.of(
-                        "id", r.getId(),
-                        "to", r.getToUser().getUsername(),
-                        "questionId", r.getQuestion().getId(),
-                        "questionText", r.getQuestion().getQuestionText(),
-                        "createdAt", r.getCreatedAt()
-                )).toList()
+                "shareAccepted", shareAccepted.stream().map(r -> {
+                    var accessible = friendService.resolveShareQuestionForViewer(r, me);
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", r.getId());
+                    m.put("to", r.getToUser().getUsername());
+                    if (accessible != null) {
+                        m.put("questionId", accessible.getId());
+                        m.put("questionText", accessible.getQuestionText());
+                    } else if (r.getQuestion() != null) {
+                        m.put("questionId", r.getQuestion().getId());
+                        m.put("questionText", r.getQuestion().getQuestionText());
+                    }
+                    m.put("createdAt", r.getCreatedAt());
+                    return m;
+                }).toList()
         ));
     }
 

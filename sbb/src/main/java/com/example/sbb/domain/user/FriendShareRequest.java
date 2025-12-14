@@ -36,4 +36,8 @@ public class FriendShareRequest {
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_question_id")
+    private QuizQuestion senderQuestion;
 }

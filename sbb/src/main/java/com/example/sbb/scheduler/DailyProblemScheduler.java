@@ -19,20 +19,17 @@ public class DailyProblemScheduler {
     private final ProblemService problemService;
 
     // 매일 오전 9시
-    @Scheduled(cron = "0 0 9 * * *")
+    // @Scheduled(cron = "0 0 9 * * *")
     public void generateDailyProblems() {
-        List<DocumentFile> docs = documentFileRepository.findAll();
-
-        for (DocumentFile doc : docs) {
-            String text = doc.getExtractedText();
-
-            if (text == null || text.isBlank()) {
-                // 아직 텍스트 미추출 문서는 건너뜀
-                continue;
-            }
-
-            String questions = geminiQuestionService.generateQuestionsFromText(text);
-            problemService.saveProblem(doc, questions);
-        }
+        // 스케줄러 호출 중단 (Gemini 쿼터 초과 방지)
+        // List<DocumentFile> docs = documentFileRepository.findAll();
+        // for (DocumentFile doc : docs) {
+        //     String text = doc.getExtractedText();
+        //     if (text == null || text.isBlank()) {
+        //         continue;
+        //     }
+        //     String questions = geminiQuestionService.generateQuestionsFromText(text);
+        //     problemService.saveProblem(doc, questions);
+        // }
     }
 }

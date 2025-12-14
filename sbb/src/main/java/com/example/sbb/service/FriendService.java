@@ -189,14 +189,84 @@ public class FriendService {
             if (friendOpt.isEmpty()) continue;
             Friend fr = friendOpt.get();
             SiteUser target = fr.getTo();
+            Folder targetFolder = null;
+            if (q.getFolder() != null) {
+                String folderName = q.getFolder().getName();
+                targetFolder = folderRepository.findByUserAndName(target, folderName).orElseGet(() -> {
+                    Folder nf = new Folder();
+                    nf.setName(folderName);
+                    nf.setUser(target);
+                    return folderRepository.save(nf);
+                });
+            }
+            QuizQuestion copy = new QuizQuestion();
+            copy.setUser(target);
+            copy.setDocument(null);
+            copy.setFolder(targetFolder);
+            copy.setNumberTag(q.getNumberTag());
+            copy.setQuestionText(q.getQuestionText());
+            copy.setChoices(q.getChoices());
+            copy.setMultipleChoice(q.isMultipleChoice());
+            copy.setAnswer(q.getAnswer());
+            copy.setExplanation(q.getExplanation());
+            copy.setSolved(false);
+            copy.setCorrect(null);
+            quizQuestionRepository.save(copy);
             FriendShareRequest req = new FriendShareRequest();
             req.setFromUser(me);
             req.setToUser(target);
-            req.setQuestion(q);
+            req.setQuestion(copy);
+            req.setSenderQuestion(q);
             req.setStatus(FriendShareRequest.Status.PENDING);
             friendShareRequestRepository.save(req);
         }
         return true;
+    }
+
+    @Transactional
+    public QuizQuestion resolveShareQuestionForViewer(FriendShareRequest req, SiteUser viewer) {
+        if (req == null || viewer == null) return null;
+        QuizQuestion q = req.getQuestion();
+        if (q != null && q.getUser() != null && q.getUser().getId().equals(viewer.getId())) {
+            return q;
+        }
+        if (req.getFromUser() == null || q == null) return q;
+        if (!req.getFromUser().getId().equals(viewer.getId())) {
+            return q;
+        }
+        QuizQuestion senderCopy = req.getSenderQuestion();
+        if (senderCopy != null && senderCopy.getUser() != null
+                && senderCopy.getUser().getId().equals(viewer.getId())) {
+            return senderCopy;
+        }
+
+        Folder targetFolder = null;
+        if (q.getFolder() != null) {
+            String folderName = q.getFolder().getName();
+            targetFolder = folderRepository.findByUserAndName(viewer, folderName).orElseGet(() -> {
+                Folder nf = new Folder();
+                nf.setName(folderName);
+                nf.setUser(viewer);
+                return folderRepository.save(nf);
+            });
+        }
+
+        QuizQuestion copy = new QuizQuestion();
+        copy.setUser(viewer);
+        copy.setDocument(null);
+        copy.setFolder(targetFolder);
+        copy.setNumberTag(q.getNumberTag());
+        copy.setQuestionText(q.getQuestionText());
+        copy.setChoices(q.getChoices());
+        copy.setMultipleChoice(q.isMultipleChoice());
+        copy.setAnswer(q.getAnswer());
+        copy.setExplanation(q.getExplanation());
+        copy.setSolved(false);
+        copy.setCorrect(null);
+        quizQuestionRepository.save(copy);
+        req.setSenderQuestion(copy);
+        friendShareRequestRepository.save(req);
+        return copy;
     }
 
     public List<FriendShareRequest> pendingShareInbox(SiteUser me) {
@@ -216,10 +286,15 @@ public class FriendService {
         var reqOpt = friendShareRequestRepository.findByIdAndToUser(reqId, me);
         if (reqOpt.isEmpty()) return false;
         FriendShareRequest req = reqOpt.get();
+        QuizQuestion q = req.getQuestion();
+        if (q != null && q.getUser() != null && q.getUser().getId().equals(me.getId())) {
+            req.setStatus(FriendShareRequest.Status.ACCEPTED);
+            friendShareRequestRepository.save(req);
+            return true;
+        }
         req.setStatus(FriendShareRequest.Status.ACCEPTED);
         friendShareRequestRepository.save(req);
 
-        QuizQuestion q = req.getQuestion();
         if (q == null) return true;
         Folder targetFolder = null;
         if (q.getFolder() != null) {
